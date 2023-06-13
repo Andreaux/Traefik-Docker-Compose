@@ -1,0 +1,49 @@
+version: '3'
+
+services:
+  traefik:
+    image: traefik:latest
+    container_name: traefik
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - proxy
+    ports:
+      - 80:80
+      - 443:443
+    environment:
+      - CF_API_EMAIL=${CF_API_EMAIL}
+      - CF_DNS_API_TOKEN=${CF_DNS_API_TOKEN}
+      # - CF_API_KEY=YOUR_API_KEY
+      # be sure to use the correct one depending on if you are using a token or key
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+#PERSISTENT_DATA_ROOT=/mnt
+      - ${PERSISTENT_DATA_ROOT}/traefik/data/traefik.yml:/traefik.yml:ro
+      - ${PERSISTENT_DATA_ROOT}/traefik/data/acme.json:/acme.json
+      - ${PERSISTENT_DATA_ROOT}/traefik/data/config.yml:/config.yml:ro
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.entrypoints=http"
+#LOCAL_DOMAIN_SUFFIX=yourlocal.domain.tld
+      - "traefik.http.routers.traefik.rule=Host(`traefik-dashboard.${LOCAL_DOMAIN_SUFFIX}`)"
+#HTTP_AUTH_USER HTTP = Auth Username to access the Traefik Dashboard
+#HTTP_AUTH_PASSWORD_HASH = HTTP Auth password HASH for the AUTH USER. Create a password hash with htpasswd.
+      - "traefik.http.middlewares.traefik-auth.basicauth.users=${HTTP_AUTH_USER}:${HTTP_AUTH_PASSWORD_HASH}"
+      - "traefik.http.middlewares.traefik-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.sslheader.headers.customrequestheaders.X-Forwarded-Proto=https"
+      - "traefik.http.routers.traefik.middlewares=traefik-https-redirect"
+      - "traefik.http.routers.traefik-secure.entrypoints=https"
+      - "traefik.http.routers.traefik-secure.rule=Host(`traefik-dashboard.${LOCAL_DOMAIN_SUFFIX}`)"
+      - "traefik.http.routers.traefik-secure.middlewares=traefik-auth"
+      - "traefik.http.routers.traefik-secure.tls=true"
+      - "traefik.http.routers.traefik-secure.tls.certresolver=cloudflare"
+      - "traefik.http.routers.traefik-secure.tls.domains[0].main=${LOCAL_DOMAIN_SUFFIX}"
+      - "traefik.http.routers.traefik-secure.tls.domains[0].sans=*.${LOCAL_DOMAIN_SUFFIX}"
+      - "traefik.http.routers.traefik-secure.service=api@internal"
+
+networks:
+  proxy:
+    external: true
