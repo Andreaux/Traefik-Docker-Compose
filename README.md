@@ -12,9 +12,10 @@ If you are using a previous version of this Docker Compose file, this version ha
 3. Edit data/traefik.yml and fill in your Cloudflare-registered e-mail address
 4. Modify the .env file (or set up the same environment variables if you're using a package manager like Portainer for example) and fill in your Cloudflare username and API token or key, as well as the other variables for the docker-compose.yml.
 5. Rename default.config.yml into config.yml and enable/set up what you need (or leave as-is for now)
-6. Create a folder for the persistent data somewhere and share it with NFS (I use version 4).
+6. Edit traefik.yml and add your e-mail address you use with Cloudflare
+7. Create a folder for the persistent data somewhere, copy the contents of /data in there and share it with NFS.
 You can use a local folder too, in that case remove the NFS definition at the top and change the volume mapping in the compose file -- instructions are there)
-7. Create and launch Traefik with docker-compose up -d
+8. Create and launch Traefik with docker-compose up -d
 
 Everything should "just work".
 
