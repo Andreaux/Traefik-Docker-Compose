@@ -18,12 +18,12 @@ providers:
     endpoint: "unix:///var/run/docker.sock"
     exposedByDefault: false
   file:
-    filename: /config.yml
+    filename: /etc/traefik/config.yml
 certificatesResolvers:
   cloudflare:
     acme:
       email: user@youremailprovider.tld # add your Cloudflare registered e-mail address here.
-      storage: acme.json
+      storage: /etc/traefik/acme.json
       dnsChallenge:
         provider: cloudflare
         # uncomment 'disablePropagationCheck: true' if you have issues pulling certificates through cloudflare.
