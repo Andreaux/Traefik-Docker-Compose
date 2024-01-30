@@ -1,47 +1,58 @@
 version: '3'
 
+#
+# Mounting NFS shares for persistent data and configurations. Change this to suit your environment.
+# If you prefer local mounts like anything under /mnt, you will need to change volume definitions in the containers as well.
+# I added comments in each so it's easier to locate them.
+# If using NFS, don't forget to set the NFS variables in the .env file!
+#
+volumes:
+  traefiknfs:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: "addr=${NFS_HOST_IP},rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+      device: ":${NFS_MOUNT_PATH}"
+
 services:
   traefik:
     image: traefik:latest
     container_name: traefik
-    restart: unless-stopped
+    restart: always
     security_opt:
       - no-new-privileges:true
     networks:
-      - proxy
+      proxy:
+        ipv4_address: ${TRAEFIK_IP}
     ports:
       - 80:80
       - 443:443
     environment:
       - CF_API_EMAIL=${CF_API_EMAIL}
-      - CF_DNS_API_TOKEN=${CF_DNS_API_TOKEN}
-      # - CF_API_KEY=YOUR_API_KEY
-      # be sure to use the correct one depending on if you are using a token or key
+      # be sure to use the correct one (only one) depending on if you are using a token or key:
+      - CF_DNS_API_TOKEN=${CF_API_TOKEN}
+      # - CF_API_KEY=${CF_API_KEY}
+
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
-#PERSISTENT_DATA_ROOT=/mnt
-      - ${PERSISTENT_DATA_ROOT}/traefik/data/traefik.yml:/traefik.yml:ro
-      - ${PERSISTENT_DATA_ROOT}/traefik/data/acme.json:/acme.json
-      - ${PERSISTENT_DATA_ROOT}/traefik/data/config.yml:/config.yml:ro
+      # Change 'traefiknfs' in the volume definition below to fit your environment if not using NFS
+      - traefiknfs:/etc/traefik
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.traefik.entrypoints=http"
-#LOCAL_DOMAIN_SUFFIX=yourlocal.domain.tld
-      - "traefik.http.routers.traefik.rule=Host(`traefik-dashboard.${LOCAL_DOMAIN_SUFFIX}`)"
-#HTTP_AUTH_USER HTTP = Auth Username to access the Traefik Dashboard
-#HTTP_AUTH_PASSWORD_HASH = HTTP Auth password HASH for the AUTH USER. Create a password hash with htpasswd.
-      - "traefik.http.middlewares.traefik-auth.basicauth.users=${HTTP_AUTH_USER}:${HTTP_AUTH_PASSWORD_HASH}"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.${DOMAINNAME}`)"
+      - "traefik.http.middlewares.traefik-auth.basicauth.users=${AUTH_USER_HASH}"
       - "traefik.http.middlewares.traefik-https-redirect.redirectscheme.scheme=https"
       - "traefik.http.middlewares.sslheader.headers.customrequestheaders.X-Forwarded-Proto=https"
       - "traefik.http.routers.traefik.middlewares=traefik-https-redirect"
       - "traefik.http.routers.traefik-secure.entrypoints=https"
-      - "traefik.http.routers.traefik-secure.rule=Host(`traefik-dashboard.${LOCAL_DOMAIN_SUFFIX}`)"
+      - "traefik.http.routers.traefik-secure.rule=Host(`traefik.${DOMAINNAME}`)"
       - "traefik.http.routers.traefik-secure.middlewares=traefik-auth"
       - "traefik.http.routers.traefik-secure.tls=true"
       - "traefik.http.routers.traefik-secure.tls.certresolver=cloudflare"
-      - "traefik.http.routers.traefik-secure.tls.domains[0].main=${LOCAL_DOMAIN_SUFFIX}"
-      - "traefik.http.routers.traefik-secure.tls.domains[0].sans=*.${LOCAL_DOMAIN_SUFFIX}"
+      - "traefik.http.routers.traefik-secure.tls.domains[0].main=${DOMAINNAME}"
+      - "traefik.http.routers.traefik-secure.tls.domains[0].sans=*.${DOMAINNAME}"
       - "traefik.http.routers.traefik-secure.service=api@internal"
 
 networks:
